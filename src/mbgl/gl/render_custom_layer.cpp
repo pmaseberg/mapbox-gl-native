@@ -9,6 +9,7 @@
 #include <mbgl/renderer/bucket.hpp>
 #include <mbgl/renderer/paint_parameters.hpp>
 #include <mbgl/util/mat4.hpp>
+#include <mbgl/perf/runtime_metrics.hpp>
 
 namespace mbgl {
 
@@ -59,6 +60,7 @@ void RenderCustomLayer::prepare(const LayerPrepareParameters&) {
 }
 
 void RenderCustomLayer::render(PaintParameters& paintParameters) {
+    MBGL_TRACE(customStarts());
     if (host != impl(baseImpl).host) {
         //If the context changed, deinitialize the previous one before initializing the new one.
         if (host && !contextDestroyed) {
@@ -99,6 +101,7 @@ void RenderCustomLayer::render(PaintParameters& paintParameters) {
     // the viewport or Framebuffer.
     paintParameters.backend.getDefaultRenderable().getResource<gl::RenderableResource>().bind();
     glContext.setDirtyState();
+    MBGL_TRACE(customEnds());
 }
 
 } // namespace mbgl

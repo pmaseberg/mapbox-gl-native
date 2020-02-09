@@ -14,6 +14,7 @@
 #include <mbgl/renderer/render_tree.hpp>
 #include <mbgl/util/string.hpp>
 #include <mbgl/util/logging.hpp>
+#include <mbgl/perf/runtime_metrics.hpp>
 
 namespace mbgl {
 
@@ -43,6 +44,8 @@ void Renderer::Impl::setObserver(RendererObserver* observer_) {
 }
 
 void Renderer::Impl::render(const RenderTree& renderTree) {
+    MBGL_TRACE(renderImplStarts());
+
     if (renderState == RenderState::Never) {
         observer->onWillStartRenderingMap();
     }
@@ -79,6 +82,8 @@ void Renderer::Impl::render(const RenderTree& renderTree) {
     const auto& sourceRenderItems = renderTree.getSourceRenderItems();
     const auto& layerRenderItems = renderTree.getLayerRenderItems();
 
+    MBGL_TRACE(uploadStarts());
+
     // - UPLOAD PASS -------------------------------------------------------------------------------
     // Uploads all required buffers and images before we do any actual rendering.
     {
@@ -95,6 +100,8 @@ void Renderer::Impl::render(const RenderTree& renderTree) {
         renderTree.getLineAtlas().upload(*uploadPass);
         renderTree.getPatternAtlas().upload(*uploadPass);
     }
+
+    MBGL_TRACE(drawStarts());
 
     // - 3D PASS -------------------------------------------------------------------------------------
     // Renders any 3D layers bottom-to-top to unique FBOs with texture attachments, but share the same
@@ -123,6 +130,8 @@ void Renderer::Impl::render(const RenderTree& renderTree) {
         }
     }
 
+    MBGL_TRACE(extrusionEnds());
+
     // - CLEAR -------------------------------------------------------------------------------------
     // Renders the backdrop of the OpenGL view. This also paints in areas where we don't have any
     // tiles whatsoever.
@@ -135,6 +144,8 @@ void Renderer::Impl::render(const RenderTree& renderTree) {
         }
         parameters.renderPass = parameters.encoder->createRenderPass("main buffer", { parameters.backend.getDefaultRenderable(), color, 1, 0 });
     }
+
+    MBGL_TRACE(clearEnds());
 
     // Actually render the layers
 
@@ -157,6 +168,8 @@ void Renderer::Impl::render(const RenderTree& renderTree) {
         }
     }
 
+    MBGL_TRACE(opaqueEnds());
+
     // - TRANSLUCENT PASS --------------------------------------------------------------------------
     // Make a second pass, rendering translucent objects. This time, we render bottom-to-top.
     {
@@ -174,6 +187,8 @@ void Renderer::Impl::render(const RenderTree& renderTree) {
         }
     }
 
+    MBGL_TRACE(translucentEnds());
+
     // - DEBUG PASS --------------------------------------------------------------------------------
     // Renders debug overlays.
     {
@@ -187,6 +202,8 @@ void Renderer::Impl::render(const RenderTree& renderTree) {
             renderItem.render(parameters);
         }
     }
+
+    MBGL_TRACE(debugEnds());
 
 #if not defined(NDEBUG)
     if (parameters.debugOptions & MapDebugOptions::StencilClip) {

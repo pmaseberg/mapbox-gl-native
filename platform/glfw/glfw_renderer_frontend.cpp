@@ -2,6 +2,7 @@
 
 #include <mbgl/renderer/renderer.hpp>
 #include <mbgl/gfx/backend_scope.hpp>
+#include <mbgl/perf/runtime_metrics.hpp>
 
 GLFWRendererFrontend::GLFWRendererFrontend(std::unique_ptr<mbgl::Renderer> renderer_, GLFWView& glfwView_)
     : glfwView(glfwView_)
@@ -30,7 +31,7 @@ void GLFWRendererFrontend::render() {
     assert(renderer);
     
     if (!updateParameters) return;
-    
+    MBGL_TRACE(updateStarts());
     mbgl::gfx::BackendScope guard { glfwView.getRendererBackend(), mbgl::gfx::BackendScope::ScopeType::Implicit };
 
     // onStyleImageMissing might be called during a render. The user implemented method
@@ -44,4 +45,9 @@ void GLFWRendererFrontend::render() {
 mbgl::Renderer* GLFWRendererFrontend::getRenderer() {
     assert(renderer);
     return renderer.get();
+}
+
+void GLFWRendererFrontend::setRecordFrame(bool enabled)
+{
+    recordFrames = enabled;
 }

@@ -11,6 +11,7 @@
 #include <mbgl/util/tile_cover.hpp>
 #include <mbgl/map/transform_state.hpp>
 #include <mbgl/gfx/cull_face_mode.hpp>
+#include <mbgl/perf/runtime_metrics.hpp>
 
 namespace mbgl {
 
@@ -65,7 +66,7 @@ bool RenderBackgroundLayer::hasCrossfade() const {
 void RenderBackgroundLayer::render(PaintParameters& parameters) {
     // Note that for bottommost layers without a pattern, the background color is drawn with
     // glClear rather than this method.
-
+    MBGL_TRACE(backgroundStarts());
     const Properties<>::PossiblyEvaluated properties;
     const BackgroundProgram::Binders paintAttributeData(properties, 0);
 
@@ -152,6 +153,7 @@ void RenderBackgroundLayer::render(PaintParameters& parameters) {
             );
         }
     }
+    MBGL_TRACE(backgroundEnds());
 }
 
 optional<Color> RenderBackgroundLayer::getSolidBackground() const {

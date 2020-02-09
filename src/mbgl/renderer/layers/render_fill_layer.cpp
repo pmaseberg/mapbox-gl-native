@@ -17,6 +17,7 @@
 #include <mbgl/tile/tile.hpp>
 #include <mbgl/util/intersection_tests.hpp>
 #include <mbgl/util/math.hpp>
+#include <mbgl/perf/runtime_metrics.hpp>
 
 namespace mbgl {
 
@@ -75,6 +76,7 @@ bool RenderFillLayer::hasCrossfade() const {
 
 void RenderFillLayer::render(PaintParameters& parameters) {
     assert(renderTiles);
+    MBGL_TRACE(fillStarts());
     if (unevaluated.get<FillPattern>().isUndefined()) {
         parameters.renderTileClippingMasks(renderTiles);
         for (const RenderTile& tile : *renderTiles) {
@@ -248,6 +250,7 @@ void RenderFillLayer::render(PaintParameters& parameters) {
             }
         }
     }
+    MBGL_TRACE(fillEnds());
 }
 
 bool RenderFillLayer::queryIntersectsFeature(const GeometryCoordinates& queryGeometry,

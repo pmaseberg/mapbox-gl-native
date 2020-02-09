@@ -5,6 +5,7 @@
 #include <mbgl/renderer/render_tree.hpp>
 #include <mbgl/gfx/backend_scope.hpp>
 #include <mbgl/annotation/annotation_manager.hpp>
+#include <mbgl/perf/runtime_metrics.hpp>
 
 namespace mbgl {
 
@@ -25,12 +26,15 @@ void Renderer::setObserver(RendererObserver* observer) {
     impl->orchestrator.setObserver(observer);
 }
 
-void Renderer::render(const std::shared_ptr<UpdateParameters>& updateParameters) {
+void Renderer::render(const std::shared_ptr<UpdateParameters>& updateParameters) { // ToDo: Change th
     assert(updateParameters);
+    MBGL_TRACE(renderStarts());
     if (auto renderTree = impl->orchestrator.createRenderTree(updateParameters)) {
+        MBGL_TRACE(prepareStarts());
         renderTree->prepare();
         impl->render(*renderTree);
     }
+    MBGL_TRACE(renderEnds());
 }
 
 std::vector<Feature> Renderer::queryRenderedFeatures(const ScreenLineString& geometry, const RenderedQueryOptions& options) const {

@@ -1,0 +1,56 @@
+STRUCT_BEGIN(TraceData)
+
+STRUCT_MEMBER_UINT64(renderer_tsStartUpdate, 0u)  // Before attaching render target
+STRUCT_MEMBER_UINT64(renderer_tsStartFrame, 0u)   // Before orchestration
+STRUCT_MEMBER_UINT64(renderer_tsStartPrepare, 0u) // Before prepare -- This and below are not present IF (!isMapModeContinuous && !renderTreeParameters->loaded)
+STRUCT_MEMBER_UINT64(renderer_tsStartRenderImpl, 0u) // Before Impl::render
+STRUCT_MEMBER_UINT64(renderer_tsStartUpload, 0u)     // Before UPLOAD PASS
+STRUCT_MEMBER_UINT64(renderer_tsStartDraw, 0u)       // Before 3D pass (extrusions)
+STRUCT_MEMBER_UINT64(renderer_tsEndExtrusion, 0u)    // 1st draw stage
+STRUCT_MEMBER_UINT64(renderer_tsEndClear, 0u)        // 2
+STRUCT_MEMBER_UINT64(renderer_tsEndOpaque, 0u)       // 3 --- opaque should only have layer render items
+STRUCT_MEMBER_UINT64(renderer_tsEndTranslucent, 0u)  // 4 --- same here
+STRUCT_MEMBER_UINT64(renderer_tsEndDebug, 0u)        // 5 --- debug only renders sourceRenderItems
+STRUCT_MEMBER_UINT64(renderer_tsEndRender, 0u)       // 6 --- in theory, (about) the same as end debug, in practice actual rendering might be if-skipped.
+
+STRUCT_MEMBER_UINT64(renderer_totalImageSourceRenderData, 0u)
+STRUCT_MEMBER_UINT64(renderer_totalLayerRenderItem, 0u)
+STRUCT_MEMBER_UINT64(renderer_totalTileSourceRenderItem, 0u)
+STRUCT_MEMBER_UINT64(renderer_tsStartImageSourceRenderData, 0u)
+STRUCT_MEMBER_UINT64(renderer_tsStartLayerRenderItem, 0u)
+STRUCT_MEMBER_UINT64(renderer_tsStartTileSourceRenderItem, 0u)
+
+STRUCT_MEMBER_UINT64(layers_totalFills, 0u)
+STRUCT_MEMBER_UINT64(layers_totalFillExtrusions, 0u)
+STRUCT_MEMBER_UINT64(layers_totalLines, 0u)
+STRUCT_MEMBER_UINT64(layers_totalCircles, 0u)
+STRUCT_MEMBER_UINT64(layers_totalHeatmaps, 0u)
+STRUCT_MEMBER_UINT64(layers_totalBackgrounds, 0u)
+STRUCT_MEMBER_UINT64(layers_totalRasters, 0u)
+STRUCT_MEMBER_UINT64(layers_totalSymbols, 0u)
+STRUCT_MEMBER_UINT64(layers_totalHillshades, 0u)
+STRUCT_MEMBER_UINT64(layers_totalCustoms, 0u)
+
+STRUCT_MEMBER_UINT64(layers_tsStartFills, 0u)
+STRUCT_MEMBER_UINT64(layers_tsStartFillExtrusions, 0u)
+STRUCT_MEMBER_UINT64(layers_tsStartLines, 0u)
+STRUCT_MEMBER_UINT64(layers_tsStartCircles, 0u)
+STRUCT_MEMBER_UINT64(layers_tsStartHeatmaps, 0u)
+STRUCT_MEMBER_UINT64(layers_tsStartBackgrounds, 0u)
+STRUCT_MEMBER_UINT64(layers_tsStartRasters, 0u)
+STRUCT_MEMBER_UINT64(layers_tsStartSymbols, 0u)
+STRUCT_MEMBER_UINT64(layers_tsStartHillshades, 0u)
+STRUCT_MEMBER_UINT64(layers_tsStartCustoms, 0u)
+
+STRUCT_MEMBER_UINT64(layers_numFills, 0u)
+STRUCT_MEMBER_UINT64(layers_numFillExtrusions, 0u)
+STRUCT_MEMBER_UINT64(layers_numLines, 0u)
+STRUCT_MEMBER_UINT64(layers_numCircles, 0u)
+STRUCT_MEMBER_UINT64(layers_numHeatmaps, 0u)
+STRUCT_MEMBER_UINT64(layers_numBackgrounds, 0u)
+STRUCT_MEMBER_UINT64(layers_numRasters, 0u)
+STRUCT_MEMBER_UINT64(layers_numSymbols, 0u)
+STRUCT_MEMBER_UINT64(layers_numHillshades, 0u)
+STRUCT_MEMBER_UINT64(layers_numCustoms, 0u)
+
+STRUCT_END()

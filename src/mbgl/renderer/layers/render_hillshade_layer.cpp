@@ -13,6 +13,7 @@
 #include <mbgl/gfx/offscreen_texture.hpp>
 #include <mbgl/gfx/render_pass.hpp>
 #include <mbgl/util/geo.hpp>
+#include <mbgl/perf/runtime_metrics.hpp>
 
 namespace mbgl {
 
@@ -79,6 +80,7 @@ void RenderHillshadeLayer::render(PaintParameters& parameters) {
     assert(renderTiles);
     if (parameters.pass != RenderPass::Translucent && parameters.pass != RenderPass::Pass3D)
         return;
+    MBGL_TRACE(hillshadeStarts());
     const auto& evaluated = static_cast<const HillshadeLayerProperties&>(*evaluatedProperties).evaluated;  
     auto draw = [&] (const mat4& matrix,
                      const auto& vertexBuffer,
@@ -221,9 +223,8 @@ void RenderHillshadeLayer::render(PaintParameters& parameters) {
                      });
             }
         }
-        
-
     }
+    MBGL_TRACE(hillshadeEnds());
 }
 
 } // namespace mbgl
