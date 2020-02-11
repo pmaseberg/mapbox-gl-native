@@ -6,8 +6,6 @@
 #include <mbgl/util/logging.hpp>
 #include <mbgl/util/platform.hpp>
 
-#include <cmath>
-
 namespace mbgl {
 namespace {
 
@@ -20,12 +18,112 @@ size_t getDashPatternHash(const std::vector<float>& dasharray, const LinePattern
     return key;
 }
 
+std::vector<DashRange> getDashRanges(const std::vector<float>& dasharray, float stretch) {
+    // If dasharray has an odd length, both the first and last parts
+    // are dashes and should be joined seamlessly.
+    const bool oddDashArray = dasharray.size() % 2 == 1;
+
+    float left = oddDashArray ? -dasharray.back() * stretch : 0.0f;
+    float right = dasharray.front() * stretch;
+    bool isDash = true;
+
+    std::vector<DashRange> ranges;
+    ranges.push_back({left, right, isDash, dasharray.front() == 0.0f});
+
+    float currentDashLength = dasharray.front();
+    for (size_t i = 1; i < dasharray.size(); ++i) {
+        isDash = !isDash;
+
+        const float dashLength = dasharray[i];
+        left = currentDashLength * stretch;
+        currentDashLength += dashLength;
+        right = currentDashLength * stretch;
+
+        ranges.push_back({left, right, isDash, dashLength == 0.0f});
+    }
+
+    return ranges;
+}
+
+void addRoundDash(const std::vector<DashRange>& ranges, const int32_t yOffset, float stretch, const int n, AlphaImage& image) {
+    const float halfStretch = stretch * 0.5f;
+
+    for (int y = -n; y <= n; y++) {
+        int row = yOffset + n + y;
+        int index = image.size.width * row;
+        int currIndex = 0;
+        DashRange range = ranges[currIndex];
+        
+        for (uint32_t x = 0; x < image.size.width; x++) {
+            if (x / range.right > 1.0f) { range = ranges[++currIndex]; }
+
+            float distLeft = std::fabsf(x - range.left);
+            float distRight = std::fabsf(x - range.right);
+            float minDist = std::fminf(distLeft, distRight);
+            float signedDistance;
+
+            float distMiddle = static_cast<float>(y) / n * (halfStretch + 1.0f);
+            if (range.isDash) {
+                float distEdge = halfStretch - std::fabsf(distMiddle);
+                signedDistance = std::sqrtf(minDist * minDist + distEdge * distEdge);
+            } else {
+                signedDistance = halfStretch - std::sqrtf(minDist * minDist + distMiddle * distMiddle);
+            }
+
+            image.data[index + x] = static_cast<uint8_t>(std::fmaxf(0.0f, std::fminf(255.0f, signedDistance + 128.0f)));
+        }
+    }
+}
+
+void addRegularDash(std::vector<DashRange>& ranges, const int32_t yOffset, AlphaImage& image) {
+    // Collapse any zero-length range
+    for (auto it = ranges.begin(); it != ranges.end();) {
+        if (it->isZeroLength) {
+            ranges.erase(it);
+        } else { ++it; }
+    }
+
+    if (ranges.size() >= 2) {
+        // Collapse neighbouring same-type parts into a single part
+        for (auto curr = ranges.begin(), next = ranges.begin() + 1; curr != ranges.end() && next != ranges.end();) {
+            if (next->isDash == curr->isDash) {
+                next->left = curr->left;
+                ranges.erase(curr);
+            } else {
+                ++curr;
+                ++next;
+            }
+        }
+    }
+
+    DashRange& first = ranges.front();
+    DashRange& last = ranges.back();
+    if (first.isDash == last.isDash) {
+        first.left = last.left - image.size.width;
+        last.right = first.right + image.size.width;
+    }
+
+    int index = image.size.width * yOffset;
+    int currIndex = 0;
+    DashRange range = ranges[currIndex];
+
+    for (uint32_t x = 0; x < image.size.width; ++x) {
+        if (x / range.right > 1.0f) { range = ranges[++currIndex]; }
+
+        float distLeft = std::fabsf(x - range.left);
+        float distRight = std::fabsf(x - range.right);
+        float minDist = std::fminf(distLeft, distRight);
+        float signedDistance = range.isDash ? minDist : -minDist;
+
+        image.data[index + x] = static_cast<uint8_t>(std::fmaxf(0.0f, std::fminf(255.0f, signedDistance + 128.0f)));
+    }
+}
+
 LinePatternPos addDashPattern(AlphaImage& image,
                               const int32_t yOffset,
                               const std::vector<float>& dasharray,
                               const LinePatternCap patternCap) {
     const uint8_t n = patternCap == LinePatternCap::Round ? 7 : 0;
-    constexpr const uint8_t offset = 128;
 
     if (dasharray.size() < 2) {
         Log::Warning(Event::ParseStyle, "line dasharray requires at least two elements");
@@ -38,64 +136,17 @@ LinePatternPos addDashPattern(AlphaImage& image,
     }
 
     float stretch = image.size.width / length;
-    float halfWidth = stretch * 0.5;
-    // If dasharray has an odd length, both the first and last parts
-    // are dashes and should be joined seamlessly.
-    bool oddLength = dasharray.size() % 2 == 1;
+    std::vector<DashRange> ranges = getDashRanges(dasharray, stretch);
 
-    for (int y = -n; y <= n; y++) {
-        int row = yOffset + n + y;
-        int index = image.size.width * row;
-
-        float left = 0;
-        float right = dasharray[0];
-        unsigned int partIndex = 1;
-
-        if (oddLength) {
-            left -= dasharray.back();
-        }
-
-        for (uint32_t x = 0; x < image.size.width; x++) {
-            while (right < x / stretch) {
-                left = right;
-                if (partIndex >= dasharray.size()) {
-                    return LinePatternPos();
-                }
-                right = right + dasharray[partIndex];
-
-                if (oddLength && partIndex == dasharray.size() - 1) {
-                    right += dasharray.front();
-                }
-
-                partIndex++;
-            }
-
-            float distLeft = fabs(x - left * stretch);
-            float distRight = fabs(x - right * stretch);
-            float dist = fmin(distLeft, distRight);
-            bool inside = (partIndex % 2) == 1;
-            int signedDistance;
-
-            if (patternCap == LinePatternCap::Round) {
-                float distMiddle = n ? (float)y / n * (halfWidth + 1) : 0;
-                if (inside) {
-                    float distEdge = halfWidth - fabs(distMiddle);
-                    signedDistance = sqrt(dist * dist + distEdge * distEdge);
-                } else {
-                    signedDistance = halfWidth - sqrt(dist * dist + distMiddle * distMiddle);
-                }
-
-            } else {
-                signedDistance = int((inside ? 1 : -1) * dist);
-            }
-
-            image.data[index + x] = fmax(0, fmin(255, signedDistance + offset));
-        }
+    if (patternCap == LinePatternCap::Round) {
+        addRoundDash(ranges, yOffset, stretch, n, image);
+    } else {
+        addRegularDash(ranges, yOffset, image);
     }
 
     LinePatternPos position;
-    position.y = (0.5 + yOffset + n) / image.size.height;
-    position.height = (2.0 * n + 1) / image.size.height;
+    position.y = (0.5f + yOffset + n) / image.size.height;
+    position.height = (2.0f * n + 1) / image.size.height;
     position.width = length;
 
     return position;
